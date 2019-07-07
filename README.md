@@ -12,3 +12,6 @@ Hyperparametrs used:
 Cost/Loss function: Log-likelihood
 
 Optimizer: Batch gradient descent
+
+## LeNet 5 Architecture (CNN)
+--- Still in progress ---
