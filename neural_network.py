@@ -3,7 +3,7 @@ import numpy as np
 
 class NeuralNetwork(object):
     
-    def __init__(self, learning_rate=0.01, hidden_layers=2, hidden_units=[2, 3], activation_functions = ['sigmoid', 'relu', 'sigmoid'],
+    def __init__(self, learning_rate=0.01, hidden_units=[2, 3], activation_functions = ['sigmoid', 'relu', 'sigmoid'],
                  epochs=200, random_state=2):
         """
         Initializing the model with the following hyperparameters
@@ -29,10 +29,9 @@ class NeuralNetwork(object):
         """
         
         self.learning_rate = learning_rate
-        self.hidden_layers = hidden_layers
         self.hidden_units = hidden_units
+        self.hidden_layers = len(hidden_units)
         self.activation_functions  = activation_functions
-        self.final_activation = final_activation
         self.epochs = epochs
         self.random_state = random_state
         
@@ -69,30 +68,32 @@ class NeuralNetwork(object):
         #Updating hidden_layers count
         self.num_layers = self.hidden_layers+1
         
-        #Updating hidden_units
-        self.hidden_units.append(self.num_classes)
+        #Updating n_[l]
+        self.n_ = [self.num_features] #n[0] = num_features
+        self.n_.extend(self.hidden_units) #hidden layers
+        self.n_.append(self.num_classes) #n[L] = num_classes
         
         #Defining weights and biases vectors
-        self.weights = [0]
-        self.biases = [0]
+        self.weights = [np.array([0])]
+        self.biases = [np.array([0])]
         
         #For any given layer, w.shape == n[l-1], n[l]
         for layer in range(1, self.num_layers+1):
-            self.weights.append(np.random.randn(self.hidden_units[layer-1], self.hidden_units[layer]))
-            self.biases.append(np.zeros((1, self.hidden_units[layer])))
-            
+            self.weights.append(np.random.randn(self.n_[layer-1], self.n_[layer])*0.001)
+            self.biases.append(np.zeros((1, self.n_[layer])))
+        
         return self
     
     
-    def activation(self, method='sigmoid', Z):
+    def activation(self, Z, method='sigmoid'):
         """
         """
         assert(method in ['sigmoid', 'relu', 'tanh'])
         
         if method=='sigmoid':
-            A = 1.0/(1 + np.exp(=-Z))
+            A = 1.0/(1 + np.exp(-Z))
         elif method=='relu':
-            A = np.max(0, Z)
+            A = np.maximum(0, Z)
         elif method=='tanh':
             A = np.tanh(Z)
             
@@ -103,14 +104,14 @@ class NeuralNetwork(object):
         """
         """
         #Initializing A and Z for each layer
-        self.A = [0 for _ in range(self.num_layers+1)]
-        self.Z = [0 for _ in range(self.num_layers+1)]
+        self.A = [np.array([0]) for _ in range(self.num_layers+1)]
+        self.Z = [np.array([0]) for _ in range(self.num_layers+1)]
         
         self.A[0] = X
         
         for l in range(1, self.num_layers+1):
             self.Z[l] = np.dot(self.A[l-1], self.weights[l]) + self.biases[l]   #Z[l] of shape (m, n[l])
-            self.A[l] = self.activation(self.activation_functions[l-1], self.Z[l])
+            self.A[l] = self.activation(self.Z[l], self.activation_functions[l-1])
             
         return self
     
@@ -139,6 +140,7 @@ class NeuralNetwork(object):
         elif method=='tanh':
             diff = 1 - self.A[l]**2        
         
+        return diff
         
     
     def backward_propagation(self, y):
@@ -153,7 +155,7 @@ class NeuralNetwork(object):
         self.dA[self.num_layers] = -(y/self.A[self.num_layers]) + ((1-y)/(1-self.A[self.num_layers]))
         
         for l in range(self.num_layers, 0 , -1):
-            self.dZ[l] = self.dA[l]*self.activation_differentaion(l)  #dZ and dA of shape (m, n[l])
+            self.dZ[l] = self.dA[l]*self.activation_differentiation(l)  #dZ and dA of shape (m, n[l])
             self.dW[l] = np.dot(self.A[l-1].T, self.dZ[l])  #dW of shape (n[l-1], n[l])
             self.dB[l] = np.sum(self.dZ[l], axis = 0, keepdims= True)
             self.dA[l-1] = np.dot(self.dZ[l], self.weights[l].T)
@@ -186,12 +188,12 @@ class NeuralNetwork(object):
         return self
     
     
-    def predict(X):
+    def predict(self, X):
         """
         """
         
         self.forward_propagation(X)
-        y_pred = self.A[-1]
+        y_pred = np.where(self.A[-1]>=0.5, 1, 0)
         
         return y_pred
         
